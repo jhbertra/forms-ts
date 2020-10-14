@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/jhbertra/fp-ts-forms/issues"
   },
-  "homepage": "https://github.com/jhbertra/fp-ts-forms#readme"
+  "homepage": "https://github.com/jhbertra/fp-ts-forms#readme",
+  "devDependencies": {
+    "typescript": "^4.0.3"
+  }
 }

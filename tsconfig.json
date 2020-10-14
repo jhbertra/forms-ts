@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
     "incremental": true,
-    "target": "ES2016"
+    "target": "ES2016",
     "module": "commonjs",
-    "lib": [],
+    "lib": ["dom", "es2015"],
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,

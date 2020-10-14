@@ -1,8 +1,10 @@
 {
-  "name": "fp-ts-forms",
-  "version": "1.0.0",
+  "name": "forms-ts",
+  "version": "0.0.0",
   "description": "Functional form combinators for TypeScript",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "sideEffects": false,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -18,5 +20,17 @@
   "homepage": "https://github.com/jhbertra/fp-ts-forms#readme",
   "devDependencies": {
     "typescript": "^4.0.3"
-  }
+  },
+  "tags": [
+    "typescript",
+    "forms",
+    "validation",
+    "functional-programming"
+  ],
+  "keywords": [
+    "typescript",
+    "forms",
+    "valildation",
+    "functional-programming"
+  ]
 }

@@ -1,5 +1,3 @@
-import * as formResult from './FormResult';
+import * as formResult from './FormResult'
 
-export {
-    formResult,
-};
+export { formResult }

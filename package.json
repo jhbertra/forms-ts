@@ -32,5 +32,9 @@
     "forms",
     "valildation",
     "functional-programming"
-  ]
+  ],
+  "dependencies": {
+    "fp-ts": "^2.8.4",
+    "monocle-ts": "^2.3.3"
+  }
 }

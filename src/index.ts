@@ -1,1 +1,5 @@
-console.log("hello world");
+import * as formResult from './FormResult';
+
+export {
+    formResult,
+};

@@ -50,3 +50,6 @@ tags*
 
 # Build
 dist/
+
+# vscode
+.vscode

@@ -8,6 +8,7 @@
   "scripts": {
     "fmt": "prettier --list-different \"./{src,test,perf}/**/*.ts\"",
     "fmt:fix": "prettier --write \"./{src,test,perf}/**/*.ts\"",
+    "jest": "jest",
     "lint": "tslint -p .",
     "lint:fix": "tslint --fix -p ."
   },

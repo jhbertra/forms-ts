@@ -1,14 +1,8 @@
-import { Alt2 } from 'fp-ts/lib/Alt'
-import { Alternative2C } from 'fp-ts/lib/Alternative'
-import { Applicative2C } from 'fp-ts/lib/Applicative'
-import { Apply2C } from 'fp-ts/lib/Apply'
 import { Bifunctor2 } from 'fp-ts/lib/Bifunctor'
-import { Chain2C } from 'fp-ts/lib/Chain'
 import * as E from 'fp-ts/lib/Either'
 import { Eq } from 'fp-ts/lib/Eq'
 import { Functor2 } from 'fp-ts/lib/Functor'
 import { Monoid } from 'fp-ts/lib/Monoid'
-import { Monad2C } from 'fp-ts/lib/Monad'
 import * as O from 'fp-ts/lib/Option'
 import { Ord } from 'fp-ts/lib/Ord'
 import { Semigroup } from 'fp-ts/lib/Semigroup'
@@ -146,8 +140,6 @@ export const filter = <M, N, E, A>(e: E, mergeMeta: (e?: E) => (m: M) => N, f: (
 
 const map_: Functor2<URI>['map'] = (fa, f) => pipe(fa, map(f))
 
-const alt_: Alt2<URI>['alt'] = (me, that) => pipe(me, alt(that))
-
 const bimap_: Bifunctor2<URI>['bimap'] = (fea, f, g) => pipe(fea, bimap(f, g))
 
 const mapLeft_: Bifunctor2<URI>['mapLeft'] = (fea, f) => pipe(fea, mapLeft(f))
@@ -162,13 +154,6 @@ const mapLeft_: Bifunctor2<URI>['mapLeft'] = (fea, f) => pipe(fea, mapLeft(f))
  */
 export const map = <A, B>(f: (a: A) => B) => <M>(result: FormResult<M, A>): FormResult<M, B> =>
   make(result.meta)(pipe(result.result, O.map(f)))
-
-/**
- * @category Alt
- * @since 1.0.0
- */
-export const alt = <M, A>(that: () => FormResult<M, A>) => (me: FormResult<M, A>): FormResult<M, A> =>
-  me.result._tag === 'None' ? that() : me
 
 /**
  * @category Bifunctor
@@ -269,78 +254,4 @@ export const Bifunctor: Bifunctor2<URI> = {
   URI,
   bimap: bimap_,
   mapLeft: mapLeft_,
-}
-
-export const Alt: Alt2<URI> = {
-  ...Functor,
-  alt: alt_,
-}
-
-/**
- * @category instances
- * @since 1.0.0
- */
-export function getApply<M>(Mm: Monoid<M>): Apply2C<URI, M> {
-  return {
-    ...Alt,
-    _E: Mm.empty,
-    ap: (fab, fa) =>
-      pipe(
-        fab,
-        zipWith(
-          fa,
-          (m) => (n) => Mm.concat(m, n),
-          (ab) => (a) => ab(a),
-        ),
-      ),
-  }
-}
-
-/**
- * @category instances
- * @since 1.0.0
- */
-export function getApplicative<M>(Mm: Monoid<M>): Applicative2C<URI, M> {
-  return {
-    ...getApply(Mm),
-    of: flow(O.some, make(Mm.empty)),
-  }
-}
-
-/**
- * @category instances
- * @since 1.0.0
- */
-export function getChain<M>(Mm: Monoid<M>): Chain2C<URI, M> {
-  return {
-    ...getApply(Mm),
-    chain: (fa, f) =>
-      pipe(
-        fa.result,
-        O.fold(() => fromMeta(fa.meta), f),
-      ),
-  }
-}
-
-/**
- * @category instances
- * @since 1.0.0
- */
-export function getMonad<M>(Mm: Monoid<M>): Monad2C<URI, M> {
-  return {
-    ...getApplicative(Mm),
-    ...getChain(Mm),
-  }
-}
-
-/**
- * @category instances
- * @since 1.0.0
- */
-export function getAlternative<M>(Mm: Monoid<M>): Alternative2C<URI, M> {
-  return {
-    ...Alt,
-    ...getApplicative(Mm),
-    zero: () => make(Mm.empty)(O.none) as any,
-  }
 }

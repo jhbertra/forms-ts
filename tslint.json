@@ -21,7 +21,6 @@
             "generic"
         ],
         "readonly-keyword": true,
-        "readonly-array": true,
         "trailing-comma": false
     }
 }

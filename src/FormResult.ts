@@ -1,14 +1,17 @@
-import { Bifunctor2 } from 'fp-ts/lib/Bifunctor'
 import * as E from 'fp-ts/lib/Either'
 import { Eq } from 'fp-ts/lib/Eq'
-import { Functor2 } from 'fp-ts/lib/Functor'
+import { Functor1 } from 'fp-ts/lib/Functor'
 import { Monoid } from 'fp-ts/lib/Monoid'
 import * as O from 'fp-ts/lib/Option'
-import { Ord } from 'fp-ts/lib/Ord'
 import { Semigroup } from 'fp-ts/lib/Semigroup'
 import { Show } from 'fp-ts/lib/Show'
-import { constant, flow, pipe } from 'fp-ts/lib/function'
+import { constant, flow, Lazy, pipe } from 'fp-ts/lib/function'
 import { Lens, Optional, Prism } from 'monocle-ts'
+import { concat, El, eqEl, monoidEl, semigroupEl, showEl } from './El'
+import { Apply1 } from 'fp-ts/lib/Apply'
+import { Applicative1 } from 'fp-ts/lib/Applicative'
+import { Alt1 } from 'fp-ts/lib/Alt'
+import { Alternative1 } from 'fp-ts/lib/Alternative'
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // model
@@ -18,8 +21,8 @@ import { Lens, Optional, Prism } from 'monocle-ts'
  * @category model
  * @since 1.0.0
  */
-export interface FormResult<M, A> {
-  readonly meta: M
+export interface FormResult<A> {
+  readonly view: El
   readonly result: O.Option<A>
 }
 
@@ -31,39 +34,39 @@ export interface FormResult<M, A> {
  * @category constructors
  * @since 1.0.0
  */
-export const make = <M>(meta: M) => <A>(result: O.Option<A>): FormResult<M, A> => Object.freeze({ meta, result })
+export const make = (view: El) => <A>(result: O.Option<A>): FormResult<A> => Object.freeze({ view, result })
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const fromMeta = <M, A = never>(meta: M) => make(meta)<A>(O.none)
+export const fromView = <A = never>(view: El) => make(view)<A>(O.none)
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Lenses
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-const meta_ = Lens.fromProp<FormResult<any, any>>()('meta')
-const result_ = Lens.fromProp<FormResult<any, any>>()('result')
+const view_ = Lens.fromProp<FormResult<any>>()('view')
+const result_ = Lens.fromProp<FormResult<any>>()('result')
 const value_ = result_.composePrism(Prism.some())
 
 /**
  * @category lenses
  * @since 1.0.0
  */
-export const meta = <M, A = any>(): Lens<FormResult<M, A>, M> => meta_
+export const view = <A = any>(): Lens<FormResult<A>, El> => view_
 
 /**
  * @category lenses
  * @since 1.0.0
  */
-export const result = <A, M = any>(): Lens<FormResult<M, A>, O.Option<A>> => result_
+export const result = <A>(): Lens<FormResult<A>, O.Option<A>> => result_
 
 /**
  * @category lenses
  * @since 1.0.0
  */
-export const value = <A, M = any>(): Optional<FormResult<M, A>, A> => value_
+export const value = <A>(): Optional<FormResult<A>, A> => value_
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // combinators
@@ -73,41 +76,19 @@ export const value = <A, M = any>(): Optional<FormResult<M, A>, A> => value_
  * @category combinators
  * @since 1.0.0
  */
-export const zipWith = <M, N, O, A, B, C>(
-  resultB: FormResult<N, B>,
-  f: (m: M) => (n: N) => O,
-  g: (a: A) => (b: B) => C,
-) => (resultA: FormResult<M, A>): FormResult<O, C> =>
-  make(f(resultA.meta)(resultB.meta))(pipe(g, O.some, O.ap(resultA.result), O.ap(resultB.result)))
-
-/**
- * @category combinators
- * @since 1.0.0
- */
-export const zip = <M, N, A, B>(resultB: FormResult<N, B>) =>
-  zipWith(
-    resultB,
-    (m: M) => (n) => [m, n] as const,
-    (a: A) => (b) => [a, b] as const,
-  )
-
-/**
- * @category combinators
- * @since 1.0.0
- */
-export const parse = <M, N, E, A, B>(mergeMeta: (e?: E) => (m: M) => N, f: (a: A) => E.Either<E, B>) => ({
+export const parse = <E, A, B>(errorView: (e: E) => El, f: (a: A) => E.Either<E, B>) => ({
   result,
-  meta,
-}: FormResult<M, A>): FormResult<N, B> =>
+  view,
+}: FormResult<A>): FormResult<B> =>
   pipe(
     result,
     O.fold(
-      constant(make(mergeMeta()(meta))<B>(O.none)),
+      constant(make(view)<B>(O.none)),
       flow(
         f,
         E.fold(
-          (e) => make(mergeMeta(e)(meta))(O.none),
-          (b) => make(mergeMeta()(meta))(O.some(b)),
+          (e) => make(concat(errorView(e))(view))(O.none),
+          (b) => make(view)(O.some(b)),
         ),
       ),
     ),
@@ -117,32 +98,32 @@ export const parse = <M, N, E, A, B>(mergeMeta: (e?: E) => (m: M) => N, f: (a: A
  * @category combinators
  * @since 1.0.0
  */
-export const parseOpt = <M, N, E, A, B>(e: E, mergeMeta: (e?: E) => (m: M) => N, f: (a: A) => O.Option<B>) =>
-  parse(mergeMeta, flow(f, E.fromOption(constant(e))))
+export const parseOpt = <E, A, B>(e: E, errorView: (e: E) => El, f: (a: A) => O.Option<B>) =>
+  parse(errorView, flow(f, E.fromOption(constant(e))))
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const refine = <M, N, E, A, B extends A>(e: E, mergeMeta: (e?: E) => (m: M) => N, f: (a: A) => a is B) =>
-  parseOpt(e, mergeMeta, O.fromPredicate(f))
+export const refine = <E, A, B extends A>(e: E, errorView: (e: E) => El, f: (a: A) => a is B) =>
+  parseOpt(e, errorView, O.fromPredicate(f))
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const filter = <M, N, E, A>(e: E, mergeMeta: (e?: E) => (m: M) => N, f: (a: A) => boolean) =>
-  parseOpt(e, mergeMeta, O.fromPredicate(f))
+export const filter = <E, A>(e: E, errorView: (e: E) => El, f: (a: A) => boolean) =>
+  parseOpt(e, errorView, O.fromPredicate(f))
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // non-pipeables
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-const map_: Functor2<URI>['map'] = (fa, f) => pipe(fa, map(f))
+const map_: Functor1<URI>['map'] = (fa, f) => pipe(fa, map(f))
 
-const bimap_: Bifunctor2<URI>['bimap'] = (fea, f, g) => pipe(fea, bimap(f, g))
+const ap_: Apply1<URI>['ap'] = (fab, fa) => pipe(fab, ap(fa))
 
-const mapLeft_: Bifunctor2<URI>['mapLeft'] = (fea, f) => pipe(fea, mapLeft(f))
+const alt_: Alt1<URI>['alt'] = (a, b) => pipe(a, alt(b))
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // pipeables
@@ -152,22 +133,27 @@ const mapLeft_: Bifunctor2<URI>['mapLeft'] = (fea, f) => pipe(fea, mapLeft(f))
  * @category Functor
  * @since 1.0.0
  */
-export const map = <A, B>(f: (a: A) => B) => <M>(result: FormResult<M, A>): FormResult<M, B> =>
-  make(result.meta)(pipe(result.result, O.map(f)))
+export const map = <A, B>(f: (a: A) => B) => (result: FormResult<A>): FormResult<B> =>
+  make(result.view)(pipe(result.result, O.map(f)))
 
 /**
- * @category Bifunctor
+ * @category Apply
  * @since 1.0.0
  */
-export const bimap = <M, N, A, B>(f: (m: M) => N, g: (a: A) => B) => (result: FormResult<M, A>): FormResult<N, B> =>
-  make(f(result.meta))(pipe(result.result, O.map(g)))
+export const ap = <A>(fa: FormResult<A>) => <B>(fab: FormResult<(a: A) => B>): FormResult<B> =>
+  make(semigroupEl.concat(fab.view, fa.view))(pipe(fab.result, O.ap(fa.result)))
 
 /**
- * @category Bifunctor
+ * @category Alt
  * @since 1.0.0
  */
-export const mapLeft = <M, N>(f: (a: M) => N) => <A>(result: FormResult<M, A>): FormResult<N, A> =>
-  make(f(result.meta))(result.result)
+export const alt = <A>(b: Lazy<FormResult<A>>) => (a: FormResult<A>): FormResult<A> => (O.isSome(a.result) ? a : b())
+
+/**
+ * @category Applicative
+ * @since 1.0.0
+ */
+export const of = <A>(a: A): FormResult<A> => make(monoidEl.empty)(O.some(a))
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // instances
@@ -178,8 +164,8 @@ export const URI = 'forms-ts/FormResult'
 export type URI = typeof URI
 
 declare module 'fp-ts/lib/HKT' {
-  interface URItoKind2<E, A> {
-    readonly [URI]: FormResult<E, A>
+  interface URItoKind<A> {
+    readonly [URI]: FormResult<A>
   }
 }
 
@@ -187,10 +173,10 @@ declare module 'fp-ts/lib/HKT' {
  * @category instances
  * @since 1.0.0
  */
-export function getShow<M, A>(Sm: Show<M>, Sa: Show<A>): Show<FormResult<M, A>> {
+export function getShow<A>(Sa: Show<A>): Show<FormResult<A>> {
   const Soa = O.getShow(Sa)
   return {
-    show: ({ meta, result }) => `FormResult { meta: ${Sm.show(meta)}, result: ${Soa.show(result)} }`,
+    show: ({ view, result }) => `FormResult { view: ${showEl.show(view)}, result: ${Soa.show(result)} }`,
   }
 }
 
@@ -198,10 +184,10 @@ export function getShow<M, A>(Sm: Show<M>, Sa: Show<A>): Show<FormResult<M, A>> 
  * @category instances
  * @since 1.0.0
  */
-export function getEq<M, A>(Em: Eq<M>, Ea: Eq<A>): Eq<FormResult<M, A>> {
+export function getEq<A>(Ea: Eq<A>): Eq<FormResult<A>> {
   const Eoa = O.getEq(Ea)
   return {
-    equals: (x, y) => x === y || (Em.equals(x.meta, y.meta) && Eoa.equals(x.result, y.result)),
+    equals: (x, y) => x === y || (eqEl.equals(x.view, y.view) && Eoa.equals(x.result, y.result)),
   }
 }
 
@@ -209,17 +195,9 @@ export function getEq<M, A>(Em: Eq<M>, Ea: Eq<A>): Eq<FormResult<M, A>> {
  * @category instances
  * @since 1.0.0
  */
-export function getOrd<M, A>(Om: Ord<M>, Oa: Ord<A>): Ord<FormResult<M, A>> {
-  const Ooa = O.getOrd(Oa)
+export function getSemigroup<A>(Soa: Semigroup<O.Option<A>>): Semigroup<FormResult<A>> {
   return {
-    ...getEq(Om, Oa),
-    compare: (x, y) => {
-      if (x === y) {
-        return 0
-      }
-      const metaCmp = Om.compare(x.meta, y.meta)
-      return metaCmp === 0 ? Ooa.compare(x.result, y.result) : metaCmp
-    },
+    concat: (a, b) => make(semigroupEl.concat(a.view, b.view))(Soa.concat(a.result, b.result)),
   }
 }
 
@@ -227,31 +205,35 @@ export function getOrd<M, A>(Om: Ord<M>, Oa: Ord<A>): Ord<FormResult<M, A>> {
  * @category instances
  * @since 1.0.0
  */
-export function getSemigroup<M, A>(Sm: Semigroup<M>, Soa: Semigroup<O.Option<A>>): Semigroup<FormResult<M, A>> {
+export function getMonoid<A>(Moa: Monoid<O.Option<A>>): Monoid<FormResult<A>> {
   return {
-    concat: (a, b) => make(Sm.concat(a.meta, b.meta))(Soa.concat(a.result, b.result)),
+    ...getSemigroup(Moa),
+    empty: make(monoidEl.empty)(Moa.empty),
   }
 }
 
-/**
- * @category instances
- * @since 1.0.0
- */
-export function getMonoid<M, A>(Mm: Monoid<M>, Moa: Monoid<O.Option<A>>): Monoid<FormResult<M, A>> {
-  return {
-    ...getSemigroup(Mm, Moa),
-    concat: (a, b) => make(Mm.concat(a.meta, b.meta))(Moa.concat(a.result, b.result)),
-    empty: make(Mm.empty)(Moa.empty),
-  }
-}
-
-export const Functor: Functor2<URI> = {
+export const Functor: Functor1<URI> = {
   URI,
   map: map_,
 }
 
-export const Bifunctor: Bifunctor2<URI> = {
-  URI,
-  bimap: bimap_,
-  mapLeft: mapLeft_,
+export const Apply: Apply1<URI> = {
+  ...Functor,
+  ap: ap_,
+}
+
+export const Alt: Alt1<URI> = {
+  ...Apply,
+  alt: alt_,
+}
+
+export const Applicative: Applicative1<URI> = {
+  ...Apply,
+  of,
+}
+
+export const Alternative: Alternative1<URI> = {
+  ...Applicative,
+  alt: alt_,
+  zero: <A>() => make(monoidEl.empty)<A>(O.none),
 }

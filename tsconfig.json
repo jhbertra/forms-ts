@@ -8,6 +8,7 @@
     "forceConsistentCasingInFileNames": true,
     "incremental": true,
     "lib": ["dom", "es6"],
+    "jsx": "preserve",
     "module": "commonjs",
     "moduleResolution": "node",
     "noEmit": true,

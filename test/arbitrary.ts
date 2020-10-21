@@ -1,4 +1,4 @@
-import * as fc from 'fp-ts-laws/node_modules/fast-check'
+import * as fc from 'fast-check'
 import * as O from 'fp-ts/Option'
 import { El, frag } from '../src/El'
 import * as FR from '../src/FormResult'

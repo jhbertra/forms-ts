@@ -14,5 +14,5 @@ module.exports = {
       statements: 100,
     },
   },
-  modulePathIgnorePatterns: ['arbitrary', 'util'],
+  modulePathIgnorePatterns: ['arbitrary', 'laws', 'util'],
 }

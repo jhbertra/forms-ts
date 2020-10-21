@@ -11,11 +11,13 @@ export type ElType = string | symbol
 
 const fragSymbol = Symbol('fragment')
 
-export interface El {
-  readonly type: ElType
+export interface Node<type = ElType> {
+  readonly type: type
   readonly props: ReadonlyRecord<string, any>
   readonly children: Array<El>
 }
+
+export type El = string | Node
 
 export const el = (type: ElType) => (props: ReadonlyRecord<string, any>) => (...children: Array<El>): El =>
   Object.freeze({
@@ -25,23 +27,26 @@ export const el = (type: ElType) => (props: ReadonlyRecord<string, any>) => (...
   })
 
 export const frag = (...children: Array<El>): El => el(fragSymbol)({})(...children)
+export const isFrag = (el: El): el is Node<symbol> => typeof el !== 'string' && el.type === fragSymbol
 
 export const empty = frag()
 export const concat = (el1: El) => (el2: El): El => {
-  const children1 = el1.type === fragSymbol ? el1.children : [el1]
-  const children2 = el2.type === fragSymbol ? el2.children : [el2]
+  const children1 = typeof el1 !== 'string' && isFrag(el1) ? el1.children : [el1]
+  const children2 = typeof el2 !== 'string' && isFrag(el2) ? el2.children : [el2]
   return frag(...children1, ...children2)
 }
 
 export const showEl: Show<El> = {
   show(el) {
+    if (typeof el === 'string') {
+      return el
+    }
     const elType = el.type.toString()
     return (
       '<' +
       elType +
-      '{' +
-      Object.entries(el.props).map(([key, val]) => `${key}={${val}}`) +
-      '}>' +
+      Object.entries(el.props).map(([key, val]) => ` ${key}={${val}}`) +
+      '>' +
       el.children.map(showEl.show) +
       '</' +
       elType +
@@ -55,7 +60,7 @@ export const eqEl: Eq<El> = {
     if (a === b) {
       return true
     }
-    if (a.type === fragSymbol && b.type === fragSymbol) {
+    if (isFrag(a) && isFrag(b)) {
       return (
         a.children.length === b.children.length &&
         pipe(
@@ -64,7 +69,7 @@ export const eqEl: Eq<El> = {
         )
       )
     }
-    if (a.type === fragSymbol) {
+    if (isFrag(a)) {
       return (
         a.children.length === 1 &&
         pipe(
@@ -73,7 +78,7 @@ export const eqEl: Eq<El> = {
         )
       )
     }
-    if (b.type === fragSymbol) {
+    if (isFrag(b)) {
       return (
         b.children.length === 1 &&
         pipe(
@@ -81,6 +86,9 @@ export const eqEl: Eq<El> = {
           A.reduce(true as boolean, (x, y) => x && y),
         )
       )
+    }
+    if (typeof a === 'string' || typeof b === 'string') {
+      return false
     }
     const aProps = A.sort(ordString)(Object.keys(a))
     const bProps = A.sort(ordString)(Object.keys(b))

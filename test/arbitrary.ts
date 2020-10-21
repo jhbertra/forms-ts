@@ -6,7 +6,7 @@ import * as FR from '../src/FormResult'
 export const arbOption = <A>(value: fc.Arbitrary<A>): fc.Arbitrary<O.Option<A>> =>
   fc.oneof(fc.constant(O.none), value.map(O.some))
 
-export const arbEl = (children = true): fc.Arbitrary<El> =>
+export const arbNode = (children = true): fc.Arbitrary<El> =>
   fc.oneof(
     fc.record({
       children: children ? fc.array(fc.constant(undefined).chain(() => arbEl(false))) : fc.constant([]),
@@ -18,6 +18,8 @@ export const arbEl = (children = true): fc.Arbitrary<El> =>
     }),
     (children ? fc.array(fc.constant(undefined).chain(() => arbEl(false))) : fc.constant([])).map((cs) => frag(...cs)),
   )
+
+export const arbEl = (children = true): fc.Arbitrary<El> => fc.oneof(arbNode(children), fc.string())
 
 export const arbFormResult = <A>(value: fc.Arbitrary<A>, view: fc.Arbitrary<El> = arbEl()) =>
   fc.record<FR.FormResult<A>>({

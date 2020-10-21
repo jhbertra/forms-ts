@@ -87,7 +87,7 @@ export const parse = <E, A, B>(errorView: (e: E) => El, f: (a: A) => E.Either<E,
       flow(
         f,
         E.fold(
-          (e) => make(concat(errorView(e))(view))(O.none),
+          (e) => make(concat(view)(errorView(e)))(O.none),
           (b) => make(view)(O.some(b)),
         ),
       ),
@@ -105,14 +105,7 @@ export const parseOpt = <E, A, B>(e: E, errorView: (e: E) => El, f: (a: A) => O.
  * @category combinators
  * @since 1.0.0
  */
-export const refine = <E, A, B extends A>(e: E, errorView: (e: E) => El, f: (a: A) => a is B) =>
-  parseOpt(e, errorView, O.fromPredicate(f))
-
-/**
- * @category combinators
- * @since 1.0.0
- */
-export const filter = <E, A>(e: E, errorView: (e: E) => El, f: (a: A) => boolean) =>
+export const filter = <E, A, B extends A>(e: E, errorView: (e: E) => El, f: (a: A) => a is B) =>
   parseOpt(e, errorView, O.fromPredicate(f))
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -7,7 +7,7 @@ import { Semigroup } from 'fp-ts/lib/Semigroup'
 import { Show } from 'fp-ts/lib/Show'
 import { constant, flow, Lazy, pipe } from 'fp-ts/lib/function'
 import { Lens, Optional, Prism } from 'monocle-ts'
-import { concat, El, eqEl, monoidEl, semigroupEl, showEl } from './El'
+import { concat, El, empty, eqEl, monoidEl, semigroupEl, showEl } from './El'
 import { Apply1 } from 'fp-ts/lib/Apply'
 import { Applicative1 } from 'fp-ts/lib/Applicative'
 import { Alt1 } from 'fp-ts/lib/Alt'
@@ -41,6 +41,12 @@ export const make = (view: El) => <A>(result: O.Option<A>): FormResult<A> => Obj
  * @since 1.0.0
  */
 export const fromView = <A = never>(view: El) => make(view)<A>(O.none)
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const fromResult = make(empty)
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Lenses

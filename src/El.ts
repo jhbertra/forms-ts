@@ -8,33 +8,36 @@ import { Semigroup } from 'fp-ts/lib/Semigroup'
 import { Monoid } from 'fp-ts/lib/Monoid'
 
 export type ElType = string | symbol
+export type ElProps = ReadonlyRecord<string, any>
 
 const fragSymbol = Symbol('fragment')
 
 export interface Node<type = ElType> {
   readonly type: type
-  readonly props: ReadonlyRecord<string, any>
+  readonly props: ElProps
   readonly children: Array<El>
 }
 
 export type El = string | Node
 
-export const el = (type: ElType) => (props: ReadonlyRecord<string, any>) => (...children: Array<El>): El =>
+const flattenFrags = (el: El): Array<El> => {
+  return isFrag(el) ? el.children : [el]
+}
+
+export const el = (type: ElType) => (props: ElProps) => (...children: Array<El>): El =>
   Object.freeze({
     type,
     props,
-    children,
+    children: children.flatMap(flattenFrags),
   })
 
 export const frag = (...children: Array<El>): El => el(fragSymbol)({})(...children)
 export const isFrag = (el: El): el is Node<symbol> => typeof el !== 'string' && el.type === fragSymbol
 
+export const wrap = (type: ElType) => (props: ElProps) => (e: El) => el(type)(props)(e)
+
 export const empty = frag()
-export const concat = (el1: El) => (el2: El): El => {
-  const children1 = typeof el1 !== 'string' && isFrag(el1) ? el1.children : [el1]
-  const children2 = typeof el2 !== 'string' && isFrag(el2) ? el2.children : [el2]
-  return frag(...children1, ...children2)
-}
+export const concat = (el1: El) => (el2: El): El => frag(el1, el2)
 
 export const showEl: Show<El> = {
   show(el) {
